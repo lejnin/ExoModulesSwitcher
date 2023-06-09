@@ -4,13 +4,9 @@ local addonName = common.GetAddonName()
 
 local OpenConfigButton
 local Panel
-local Settings
 local ItemDesc
-local SettingsRowDesc
 
-local ConfigTalents
 local TalentIdByIndex = {}
-local TalentsBySender = {}
 local wItems = {}
 
 local dndOn = false
@@ -36,84 +32,11 @@ function LogToChat(text)
     end
 end
 
-function CreateSettingsPanel()
-    Settings = mainForm:GetChildUnchecked("Settings", false)
-    Settings:Show(false)
-    DnD.Init(Settings, Settings:GetChildUnchecked('WindowHeader', false), true)
+function CreateConfigButton()
+    OpenConfigButton = mainForm:GetChildUnchecked('OpenConfigButton', false)
+    DnD.Init(OpenConfigButton, nil, true)
 
-    local headerText = Settings:GetChildUnchecked("HeaderText", true)
-    local formatVT = "<html fontname='AllodsFantasy' alignx='center' fontsize='14' shadow='1'><rs class='color'><r name='text'/></rs></html>"
-    headerText:SetFormat(userMods.ToWString(formatVT))
-    headerText:SetVal("text", userMods.ToWString('EMS - Выбор модулей'))
-    headerText:SetClassVal("color", "FullCollectionColor")
-
-    local SettingsRow = mainForm:GetChildUnchecked('SettingsRow', true)
-    SettingsRowDesc = SettingsRow:GetWidgetDesc()
-    SettingsRow:DestroyWidget()
-
-    LoadModulesListToSettingsPanel()
-
-    common.RegisterReactionHandler(function()
-        Settings:Show(false)
-    end, 'cross_close')
-
-    common.RegisterReactionHandler(OnSettingsRowPointing, 'onSettingsRowPointing')
-    common.RegisterReactionHandler(OnSettingsRowClick, 'onSettingsRowClick')
-end
-
-function OnSettingsRowClick(reaction)
-    local talentId = TalentsBySender[reaction.sender]
-    if ConfigTalents[talentId] == nil then
-        ConfigTalents[talentId] = true
-    else
-        ConfigTalents[talentId] = nil
-    end
-
-    SaveConfig()
-    UpdatePanel()
-end
-
-function OnSettingsRowPointing(reaction)
-    if reaction.active then
-        reaction.widget:SetBackgroundColor({ a = 0.1 })
-    else
-        reaction.widget:SetBackgroundColor({ a = 0 })
-    end
-end
-
-function LoadModulesListToSettingsPanel()
-    local container = Settings:GetChildUnchecked('SettingsContainer', true)
-    local exoMountId = mount.GetExoMount()
-    local availableTalents = mount.GetAvailableTalents(exoMountId)
-    local index = 0
-
-    for _, talentId in ipairs(availableTalents[#availableTalents].talents) do
-        local unlock = avatar.GetUnlockInfo(talentId:GetInfo().unlock)
-        if unlock ~= nil then
-            local columnIndex = index % 2 -- Определение номера колонки: 0 или 1
-            local rowIndex = math.floor(index / 2) -- Определение номера строки
-
-            local settingRow = mainForm:CreateWidgetByDesc(SettingsRowDesc)
-            local wName = 'SI' .. tostring(index)
-            settingRow:SetName(wName)
-            TalentsBySender[wName] = talentId
-
-            local placementPlain = settingRow:GetPlacementPlain()
-            placementPlain.posX = columnIndex * placementPlain.sizeX -- Позиция по X
-            placementPlain.posY = rowIndex * placementPlain.sizeY -- Позиция по Y
-            settingRow:SetPlacementPlain(placementPlain)
-
-            settingRow:GetChildUnchecked('SettingImageItem', false):SetBackgroundTexture(unlock.image)
-            local text = settingRow:GetChildUnchecked('SettingsItemName', false)
-            local str = '<body color="0xFFFFFFFF" fontsize="14" outline="1"><rs class="class"><r name="text"/></rs></body>'
-            text:SetFormat(userMods.ToWString(str))
-            text:SetVal('text', unlock.name)
-
-            container:AddChild(settingRow)
-
-            index = index + 1
-        end
-    end
+    common.RegisterReactionHandler(OnRightClickButton, 'EVENT_ON_CONFIG_BUTTON_RIGHT_CLICK')
 end
 
 function CreatePanel()
@@ -130,9 +53,10 @@ function CreatePanel()
     ItemDesc = Item:GetWidgetDesc()
     Item:DestroyWidget()
 
-    -- восстановить расположение из настроек dnd
     DnD.Init(Panel, nil, true)
     DnD.Remove(Panel)
+
+    LoadModulesToPanel()
 
     common.RegisterReactionHandler(OnItemClick, 'EVENT_ON_ITEM_CLICK')
 end
@@ -146,32 +70,36 @@ function OnItemClick(reaction)
 
     local exoMountId = mount.GetExoMount()
     local talents = mount.GetSelectedTalents(exoMountId)
-    talents[#talents] = TalentsBySender[reaction.sender]
+    talents[#talents] = TalentIdByIndex[talentIndex]
 
     mount.SelectTalents(exoMountId, talents)
 end
 
-function OnItemPointing(params)
 
-end
+function LoadModulesToPanel()
+    local exoMountId = mount.GetExoMount()
+    local availableTalents = mount.GetAvailableTalents(exoMountId)
+    local index = 0
 
-function CreateConfigButton()
-    OpenConfigButton = mainForm:GetChildUnchecked("OpenConfigButton", false)
-    OpenConfigButton:Show(true)
+    for talentIndex, _ in pairs(modules) do
+        if availableTalents[#availableTalents].talents[talentIndex] ~= nil then
+            local talentId = availableTalents[#availableTalents].talents[talentIndex]
+            local unlock = avatar.GetUnlockInfo(talentId:GetInfo().unlock)
 
-    DnD.Init(OpenConfigButton, nil, true)
+            AddItem(unlock, index)
+            TalentIdByIndex[index] = talentId
 
-    common.RegisterReactionHandler(OnClickButton, 'EVENT_ON_CONFIG_BUTTON_CLICK')
-    common.RegisterReactionHandler(OnRightClickButton, 'EVENT_ON_CONFIG_BUTTON_RIGHT_CLICK')
-    common.RegisterEventHandler(OnAoPanelStart, 'AOPANEL_START')
-end
-
-function BuildItemWidgetName(index)
-    return 'MountTalent' .. tostring(index)
+            index = index + 1
+        end
+    end
 end
 
 function GetTalentIndex(reaction)
     return tonumber(string.sub(reaction.sender, 12))
+end
+
+function BuildItemWidgetName(index)
+    return 'MountTalent' .. tostring(index)
 end
 
 function AddItem(unlock, index)
@@ -202,14 +130,6 @@ function GetCooldownReadableString(timerInMs)
     end
 
     return tostring(math.floor(timerInMs / 1000)) .. 's'
-end
-
-function UpdateTimers()
-
-end
-
-function OnSecondTimer()
-    UpdateTimers()
 end
 
 function OnAoPanelStart()
@@ -246,11 +166,6 @@ function OnClickButton()
         return
     end
 
-    if Settings == nil then
-        return
-    end
-
-    Settings:Show(Settings:IsVisible() == false)
 end
 
 function OnRightClickButton()
@@ -271,47 +186,11 @@ function OnRightClickButton()
     dndOn = not dndOn
 end
 
-function LoadConfig()
-    ConfigTalents = userMods.GetAvatarConfigSection(addonName).talents or {}
-end
-
-function UpdatePanel()
-    for index, w in pairs(wItems) do
-        w:DestroyWidget()
-        wItems[index] = nil
-    end
-
-    local index = 0
-    for talentId, _ in pairs(ConfigTalents) do
-        local unlock = avatar.GetUnlockInfo(talentId:GetInfo().unlock)
-        AddItem(unlock, index)
-        index = index + 1
-    end
-
-    local CommonPanelPlacement = Panel:GetPlacementPlain();
-    CommonPanelPlacement.sizeY = config['ICON_SIZE']
-    CommonPanelPlacement.sizeX = config['ICON_SIZE'] * GetTableLength(ConfigTalents) + 20
-    Panel:SetPlacementPlain(CommonPanelPlacement)
-end
-
-function SaveConfig()
-    local Config = userMods.GetAvatarConfigSection(addonName) or {}
-    Config.talents = ConfigTalents
-    userMods.SetAvatarConfigSection(addonName, Config)
-end
-
 function OnEventAvatarCreated()
     mainForm:Show(false)
 
-    LoadConfig()
-
     CreatePanel()
-    UpdatePanel()
-
-    CreateSettingsPanel()
     CreateConfigButton()
-
-    --LoadPanelItems()
 
     mainForm:Show(true)
 end

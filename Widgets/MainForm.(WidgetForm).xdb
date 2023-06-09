@@ -3,9 +3,8 @@
 	<Name>MainForm</Name>
 	<Priority>6000</Priority>
 	<Children>
-		<Item href="Buttons/OpenConfig/ButtonShow.(WidgetButton).xdb" />
 		<Item href="ModulesPanel/Panel.(WidgetPanel).xdb" />
-		<Item href="Settings/Settings.(WidgetPanel).xdb" />
+		<Item href="Buttons/OpenConfig/ButtonShow.(WidgetButton).xdb" />
 	</Children>
 	<Placement>
 		<QuantumScale>false</QuantumScale>

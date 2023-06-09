@@ -1,1 +1,0 @@
-<html fontname='AllodsFantasy' aligny="center" fontsize='14' shadow='1'><rs class='color'><r name='text'/></rs></html>

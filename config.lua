@@ -1,22 +1,16 @@
-Global("config", {})
-Global("modules", {})
+Global("config", {
 
---modules = {
---    ['Модуль «Амброзиевый штурм»'] = true,
---    ['Модуль «Юнион»'] = true,
---    ['Модуль «Реактив»'] = true,
---    ['Модуль «Гарда»'] = true,
---}
+    -- Ширина/высота иконки умения на панели откатов
+    ['ICON_SIZE'] = 50,
 
-modules = {
+    -- Размер шрифта таймера
+    ['COOLDOWN_TEXT_FONTSIZE'] = 16
+
+})
+
+Global("modules", {
     [1] = true,
     [3] = true,
     [5] = true,
     [16] = true,
-}
-
--- Ширина/высота иконки умения на панели откатов
-config['ICON_SIZE'] = 50
-
--- Размер шрифта таймера
-config['COOLDOWN_TEXT_FONTSIZE'] = 16
+})
