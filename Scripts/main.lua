@@ -62,6 +62,7 @@ end
 
 function OnItemClick(reaction)
     if dndOn == true then
+        LogToChat('Выключи DnD')
         return
     end
 
