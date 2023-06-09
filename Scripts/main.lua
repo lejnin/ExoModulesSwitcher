@@ -7,7 +7,6 @@ local Panel
 local ItemDesc
 
 local TalentIdByIndex = {}
-local wItems = {}
 
 local dndOn = false
 
@@ -103,17 +102,17 @@ function BuildItemWidgetName(index)
 end
 
 function AddItem(unlock, index)
-    wItems[index] = mainForm:CreateWidgetByDesc(ItemDesc)
-    wItems[index]:SetName(BuildItemWidgetName(index))
-    wItems[index]:GetChildUnchecked('ImageItem', false):SetBackgroundTexture(unlock.image)
+    local widget = mainForm:CreateWidgetByDesc(ItemDesc)
+    widget:SetName(BuildItemWidgetName(index))
+    widget:GetChildUnchecked('ImageItem', false):SetBackgroundTexture(unlock.image)
 
-    local placementPlain = wItems[index]:GetPlacementPlain()
+    local placementPlain = widget:GetPlacementPlain()
     placementPlain.posX = index * config['ICON_SIZE']
     placementPlain.sizeX = config['ICON_SIZE']
     placementPlain.sizeY = config['ICON_SIZE']
-    wItems[index]:SetPlacementPlain(placementPlain)
+    widget:SetPlacementPlain(placementPlain)
 
-    Panel:AddChild(wItems[index])
+    Panel:AddChild(widget)
 end
 
 function GetCooldownReadableString(timerInMs)
