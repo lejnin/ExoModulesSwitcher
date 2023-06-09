@@ -9,8 +9,8 @@ Global("config", {
 })
 
 Global("modules", {
-    [1] = true,
-    [3] = true,
-    [5] = true,
-    [16] = true,
+    16,
+    1,
+    3,
+    5,
 })

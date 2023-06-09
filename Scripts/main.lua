@@ -80,7 +80,7 @@ function LoadModulesToPanel()
     local availableTalents = mount.GetAvailableTalents(exoMountId)
     local index = 0
 
-    for talentIndex, _ in pairs(modules) do
+    for _, talentIndex in pairs(modules) do
         if availableTalents[#availableTalents].talents[talentIndex] ~= nil then
             local talentId = availableTalents[#availableTalents].talents[talentIndex]
             local unlock = avatar.GetUnlockInfo(talentId:GetInfo().unlock)
