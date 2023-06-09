@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<WidgetButton>
+	<Placement>
+		<X>
+			<Align>WIDGET_ALIGN_LOW</Align>
+			<Pos>0</Pos>
+			<Size>40</Size>
+		</X>
+		<Y>
+			<Align>WIDGET_ALIGN_LOW</Align>
+			<Pos>0</Pos>
+			<Size>40</Size>
+		</Y>
+	</Placement>
+	<Variants>
+		<Item>
+			<Reaction>EVENT_ON_ITEM_CLICK</Reaction>
+		</Item>
+	</Variants>
+	<Name>PanelItem</Name>
+	<TransparentInput>false</TransparentInput>
+	<PickChildrenOnly>false</PickChildrenOnly>
+	<Children>
+		<Item href="Cooldown/TextView.(WidgetTextView).xdb" />
+		<Item href="Image/ImageItem.(WidgetPanel).xdb" />
+	</Children>
+	<clipContent>false</clipContent>
+	<reactionOnPointing>EVENT_ON_ITEM_POINTING</reactionOnPointing>
+</WidgetButton>

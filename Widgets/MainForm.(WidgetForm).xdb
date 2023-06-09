@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<WidgetForm>
+	<Name>MainForm</Name>
+	<Priority>6000</Priority>
+	<Children>
+		<Item href="Buttons/OpenConfig/ButtonShow.(WidgetButton).xdb" />
+		<Item href="ModulesPanel/Panel.(WidgetPanel).xdb" />
+		<Item href="Settings/Settings.(WidgetPanel).xdb" />
+	</Children>
+	<Placement>
+		<QuantumScale>false</QuantumScale>
+		<X>
+			<Align>WIDGET_ALIGN_BOTH</Align>
+			<HighPos>0</HighPos>
+		</X>
+		<Y>
+			<Align>WIDGET_ALIGN_BOTH</Align>
+		</Y>
+	</Placement>
+	<Visible>true</Visible>
+	<Enabled>true</Enabled>
+	<TransparentInput>false</TransparentInput>
+	<PickChildrenOnly>true</PickChildrenOnly>
+</WidgetForm>

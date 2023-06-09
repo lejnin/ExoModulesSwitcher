@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<WidgetButton>
+	<Name>SettingsRow</Name>
+	<Children>
+		<Item href="Image/ImageItem.(WidgetPanel).xdb" />
+		<Item href="Text/TextView.(WidgetTextView).xdb" />
+	</Children>
+	<Placement>
+		<X>
+			<Align>WIDGET_ALIGN_LOW</Align>
+			<HighPos>0</HighPos>
+			<Size>325</Size>
+		</X>
+		<Y>
+			<Size>40</Size>
+		</Y>
+	</Placement>
+	<BackLayer href="RowBackground.(WidgetLayerSimpleTexture).xdb" />
+	<reactionOnPointing>onSettingsRowPointing</reactionOnPointing>
+	<Variants>
+		<Item>
+			<Reaction>onSettingsRowClick</Reaction>
+		</Item>
+	</Variants>
+</WidgetButton>

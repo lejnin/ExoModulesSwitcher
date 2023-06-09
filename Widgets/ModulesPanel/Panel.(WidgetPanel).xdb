@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<WidgetPanel>
+	<Name>ItemsPanel</Name>
+	<Children>
+		<Item href="Item/PanelItem.(WidgetButton).xdb" />
+	</Children>
+	<Placement>
+		<X>
+			<Align>WIDGET_ALIGN_LOW</Align>
+			<Pos>0</Pos>
+			<Size>50</Size>
+		</X>
+		<Y>
+			<Align>WIDGET_ALIGN_LOW</Align>
+			<Pos>0</Pos>
+			<Size>40</Size>
+		</Y>
+	</Placement>
+	<PickChildrenOnly>false</PickChildrenOnly>
+	<BackLayer href="Item/Image/Image.(WidgetLayerSimpleTexture).xdb" />
+	<TransparentInput>false</TransparentInput>
+	<clipContent>false</clipContent>
+</WidgetPanel>

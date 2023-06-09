@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<WidgetPanel>
+	<Priority>200</Priority>
+	<Header>
+		<isPrototype>true</isPrototype>
+	</Header>
+	<Children>
+		<Item href="CornerCross.(WidgetButton).xdb" />
+	</Children>
+	<Placement>
+		<X>
+			<Align>WIDGET_ALIGN_HIGH</Align>
+			<Pos>0</Pos>
+			<HighPos>1</HighPos>
+			<Size>52</Size>
+		</X>
+		<Y>
+			<Pos>14</Pos>
+			<Size>52</Size>
+		</Y>
+	</Placement>
+	<PickChildrenOnly>true</PickChildrenOnly>
+	<BackLayer href="GoldenCorner.(WidgetLayerSimpleTexture).xdb" />
+</WidgetPanel>
