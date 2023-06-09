@@ -61,6 +61,10 @@ function CreatePanel()
 end
 
 function OnItemClick(reaction)
+    if dndOn == true then
+        return
+    end
+
     local talentIndex = GetTalentIndex(reaction)
 
     if TalentIdByIndex[talentIndex] == nil then
