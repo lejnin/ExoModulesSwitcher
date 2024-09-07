@@ -7,6 +7,7 @@ local Panel
 local ItemDesc
 
 local TalentIdByIndex = {}
+local SelectTalentByIndexAfterCombat
 
 local dndOn = false
 
@@ -42,12 +43,6 @@ function CreatePanel()
     Panel = mainForm:GetChildUnchecked("ItemsPanel", false)
     Panel:SetBackgroundColor({ a = 0.0 })
 
-    -- задать общие размеры панели
-    local CommonPanelPlacement = Panel:GetPlacementPlain();
-    CommonPanelPlacement.sizeY = config['ICON_SIZE']
-    CommonPanelPlacement.sizeX = config['ICON_SIZE'] * GetTableLength(modules) + 20
-    Panel:SetPlacementPlain(CommonPanelPlacement)
-
     local Item = Panel:GetChildUnchecked("PanelItem", false)
     ItemDesc = Item:GetWidgetDesc()
     Item:DestroyWidget()
@@ -55,9 +50,30 @@ function CreatePanel()
     DnD.Init(Panel, nil, true)
     DnD.Remove(Panel)
 
-    LoadModulesToPanel()
+    local loaded = LoadModulesToPanel()
+    local CommonPanelPlacement = Panel:GetPlacementPlain();
+    CommonPanelPlacement.sizeY = config['ICON_SIZE']
+    CommonPanelPlacement.sizeX = config['ICON_SIZE'] * loaded + 20
+    Panel:SetPlacementPlain(CommonPanelPlacement)
 
     common.RegisterReactionHandler(OnItemClick, 'EVENT_ON_ITEM_CLICK')
+end
+
+function SelectTalent(talentIndex)
+    local exoMountId = mount.GetExoMount()
+    local talents = mount.GetSelectedTalents(exoMountId)
+    talents[#talents] = TalentIdByIndex[talentIndex]
+
+    mount.SelectTalents(exoMountId, talents)
+end
+
+function UpdateModuleAfterCombatIsFinished()
+    common.UnRegisterEventHandler(UpdateModuleAfterCombatIsFinished, "EVENT_OBJECT_COMBAT_STATUS_CHANGED")
+
+    if SelectTalentByIndexAfterCombat ~= nil then
+        SelectTalent(SelectTalentByIndexAfterCombat)
+        SelectTalentByIndexAfterCombat = nil
+    end
 end
 
 function OnItemClick(reaction)
@@ -67,35 +83,59 @@ function OnItemClick(reaction)
     end
 
     local talentIndex = GetTalentIndex(reaction)
-
     if TalentIdByIndex[talentIndex] == nil then
         return
     end
 
-    local exoMountId = mount.GetExoMount()
-    local talents = mount.GetSelectedTalents(exoMountId)
-    talents[#talents] = TalentIdByIndex[talentIndex]
+    if object.IsInCombat(avatar.GetId()) then
+        if SelectTalentByIndexAfterCombat == talentIndex then
+            SelectTalentByIndexAfterCombat = nil
+            LogToChat('Отмена установки модуля после боя')
+        else
+            SelectTalentByIndexAfterCombat = talentIndex
+            local moduleName = StripTags(avatar.GetUnlockInfo(TalentIdByIndex[talentIndex]:GetInfo().unlock).name)
+            LogToChat(moduleName .. ' будет установлен после боя')
+        end
 
-    mount.SelectTalents(exoMountId, talents)
+        common.RegisterEventHandler(UpdateModuleAfterCombatIsFinished, "EVENT_OBJECT_COMBAT_STATUS_CHANGED")
+    else
+        SelectTalentByIndexAfterCombat = nil
+        SelectTalent(talentIndex)
+    end
 end
 
+function table.invert(t)
+    local s={}
+    for k,v in pairs(t) do
+        s[v]=k
+    end
+    return s
+end
 
 function LoadModulesToPanel()
-    local exoMountId = mount.GetExoMount()
-    local availableTalents = mount.GetAvailableTalents(exoMountId)
-    local index = 0
+    local availableTalents = mount.GetAvailableTalents(mount.GetExoMount())
+    local modulesIndexesByNames = table.invert(modules)
+    local modulesToDisplay = {}
 
-    for _, talentIndex in pairs(modules) do
-        if availableTalents[#availableTalents].talents[talentIndex] ~= nil then
-            local talentId = availableTalents[#availableTalents].talents[talentIndex]
-            local unlock = avatar.GetUnlockInfo(talentId:GetInfo().unlock)
-
-            AddItem(unlock, index)
-            TalentIdByIndex[index] = talentId
-
-            index = index + 1
+    for _, talentId in pairs(availableTalents[#availableTalents].talents) do
+        local unlock = avatar.GetUnlockInfo(talentId:GetInfo().unlock)
+        local moduleName = userMods.FromWString(StripTags(unlock.name))
+        if modulesIndexesByNames[moduleName] ~= nil then
+            modulesToDisplay[modulesIndexesByNames[moduleName]] = {
+                unlock = unlock,
+                talentId = talentId,
+            }
         end
     end
+
+    local index = 0
+    for _, talentInfo in pairs(modulesToDisplay) do
+        AddItem(talentInfo.unlock, index)
+        TalentIdByIndex[index] = talentInfo.talentId
+        index = index + 1
+    end
+
+    return index
 end
 
 function GetTalentIndex(reaction)
@@ -118,22 +158,6 @@ function AddItem(unlock, index)
     widget:SetPlacementPlain(placementPlain)
 
     Panel:AddChild(widget)
-end
-
-function GetCooldownReadableString(timerInMs)
-    if timerInMs >= 86400000 then
-        return tostring(math.floor(timerInMs / 86400000)) .. 'd'
-    end
-
-    if timerInMs >= 3600000 then
-        return tostring(math.floor(timerInMs / 3600000)) .. 'h'
-    end
-
-    if timerInMs >= 60000 then
-        return tostring(math.floor(timerInMs / 60000)) .. 'm'
-    end
-
-    return tostring(math.floor(timerInMs / 1000)) .. 's'
 end
 
 function OnAoPanelStart()
@@ -199,10 +223,8 @@ function OnEventAvatarCreated()
     mainForm:Show(true)
 end
 
-function GetTableLength(T)
-    local count = 0
-    for _ in pairs(T) do count = count + 1 end
-    return count
+function StripTags(s)
+    return common.IsWString(s) and common.CreateValuedText { format = s }:ToWString() or s
 end
 
 function Init()
