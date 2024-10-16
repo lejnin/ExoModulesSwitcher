@@ -10,8 +10,10 @@ local TalentIdByIndex = {}
 local SelectTalentByIndexAfterCombat
 
 local dndOn = false
+local avatarId
+local isInCombat = object.IsInCombat
 
-function LogToChat(text)
+local function LogToChat(text)
     if not wtChat then
         wtChat = stateMainForm:GetChildUnchecked("ChatLog", false)
         wtChat = wtChat:GetChildUnchecked("Container", true)
@@ -25,41 +27,36 @@ function LogToChat(text)
         end
 
         valuedText:ClearValues()
-        valuedText:SetClassVal("color", "LogColorYellow")
-        valuedText:SetVal("text", text)
-        valuedText:SetVal("addonName", userMods.ToWString("EMS: "))
+        valuedText:SetClassVal('color', 'LogColorYellow')
+        valuedText:SetVal('text', text)
+        valuedText:SetVal('addonName', userMods.ToWString('EMS: '))
         wtChat:PushFrontValuedText(valuedText)
     end
 end
 
-function CreateConfigButton()
-    OpenConfigButton = mainForm:GetChildUnchecked('OpenConfigButton', false)
-    DnD.Init(OpenConfigButton, nil, true)
-
-    common.RegisterReactionHandler(OnRightClickButton, 'EVENT_ON_CONFIG_BUTTON_RIGHT_CLICK')
+local function StripTags(s)
+    return common.IsWString(s) and common.CreateValuedText { format = s }:ToWString() or s
 end
 
-function CreatePanel()
-    Panel = mainForm:GetChildUnchecked("ItemsPanel", false)
-    Panel:SetBackgroundColor({ a = 0.0 })
-
-    local Item = Panel:GetChildUnchecked("PanelItem", false)
-    ItemDesc = Item:GetWidgetDesc()
-    Item:DestroyWidget()
-
-    DnD.Init(Panel, nil, true)
-    DnD.Remove(Panel)
-
-    local loaded = LoadModulesToPanel()
-    local CommonPanelPlacement = Panel:GetPlacementPlain();
-    CommonPanelPlacement.sizeY = config['ICON_SIZE']
-    CommonPanelPlacement.sizeX = config['ICON_SIZE'] * loaded + 20
-    Panel:SetPlacementPlain(CommonPanelPlacement)
-
-    common.RegisterReactionHandler(OnItemClick, 'EVENT_ON_ITEM_CLICK')
+local function BuildItemWidgetName(index)
+    return 'MountTalent' .. tostring(index)
 end
 
-function SelectTalent(talentIndex)
+local function AddItem(unlock, index)
+    local widget = mainForm:CreateWidgetByDesc(ItemDesc)
+    widget:SetName(BuildItemWidgetName(index))
+    widget:GetChildUnchecked('ImageItem', false):SetBackgroundTexture(unlock.image)
+
+    local placementPlain = widget:GetPlacementPlain()
+    placementPlain.posX = index * config['ICON_SIZE']
+    placementPlain.sizeX = config['ICON_SIZE']
+    placementPlain.sizeY = config['ICON_SIZE']
+    widget:SetPlacementPlain(placementPlain)
+
+    Panel:AddChild(widget)
+end
+
+local function SelectTalent(talentIndex)
     local exoMountId = mount.GetExoMount()
     local talents = mount.GetSelectedTalents(exoMountId)
     talents[#talents] = TalentIdByIndex[talentIndex]
@@ -67,16 +64,18 @@ function SelectTalent(talentIndex)
     mount.SelectTalents(exoMountId, talents)
 end
 
-function UpdateModuleAfterCombatIsFinished()
-    common.UnRegisterEventHandler(UpdateModuleAfterCombatIsFinished, "EVENT_OBJECT_COMBAT_STATUS_CHANGED")
-
-    if SelectTalentByIndexAfterCombat ~= nil then
+local function UpdateModuleAfterCombatIsFinished(params)
+    if params.inCombat == false and SelectTalentByIndexAfterCombat ~= nil then
         SelectTalent(SelectTalentByIndexAfterCombat)
         SelectTalentByIndexAfterCombat = nil
     end
 end
 
-function OnItemClick(reaction)
+local function GetTalentIndex(reaction)
+    return tonumber(string.sub(reaction.sender, 12))
+end
+
+local function OnItemClick(reaction)
     if dndOn == true then
         LogToChat('Выключи DnD')
         return
@@ -87,7 +86,7 @@ function OnItemClick(reaction)
         return
     end
 
-    if object.IsInCombat(avatar.GetId()) then
+    if isInCombat(avatarId) then
         if SelectTalentByIndexAfterCombat == talentIndex then
             SelectTalentByIndexAfterCombat = nil
             LogToChat('Отмена установки модуля после боя')
@@ -96,15 +95,13 @@ function OnItemClick(reaction)
             local moduleName = StripTags(avatar.GetUnlockInfo(TalentIdByIndex[talentIndex]:GetInfo().unlock).name)
             LogToChat(moduleName .. ' будет установлен после боя')
         end
-
-        common.RegisterEventHandler(UpdateModuleAfterCombatIsFinished, "EVENT_OBJECT_COMBAT_STATUS_CHANGED")
     else
         SelectTalentByIndexAfterCombat = nil
         SelectTalent(talentIndex)
     end
 end
 
-function table.invert(t)
+local function invertTable(t)
     local s={}
     for k,v in pairs(t) do
         s[v]=k
@@ -112,9 +109,9 @@ function table.invert(t)
     return s
 end
 
-function LoadModulesToPanel()
+local function LoadModulesToPanel()
     local availableTalents = mount.GetAvailableTalents(mount.GetExoMount())
-    local modulesIndexesByNames = table.invert(modules)
+    local modulesIndexesByNames = invertTable(modules)
     local modulesToDisplay = {}
 
     for _, talentId in pairs(availableTalents[#availableTalents].talents) do
@@ -138,42 +135,14 @@ function LoadModulesToPanel()
     return index
 end
 
-function GetTalentIndex(reaction)
-    return tonumber(string.sub(reaction.sender, 12))
+local function OnClickButton()
+    if DnD:IsDragging() then
+        return
+    end
+
 end
 
-function BuildItemWidgetName(index)
-    return 'MountTalent' .. tostring(index)
-end
-
-function AddItem(unlock, index)
-    local widget = mainForm:CreateWidgetByDesc(ItemDesc)
-    widget:SetName(BuildItemWidgetName(index))
-    widget:GetChildUnchecked('ImageItem', false):SetBackgroundTexture(unlock.image)
-
-    local placementPlain = widget:GetPlacementPlain()
-    placementPlain.posX = index * config['ICON_SIZE']
-    placementPlain.sizeX = config['ICON_SIZE']
-    placementPlain.sizeY = config['ICON_SIZE']
-    widget:SetPlacementPlain(placementPlain)
-
-    Panel:AddChild(widget)
-end
-
-function OnAoPanelStart()
-    local SetVal = { val = userMods.ToWString('EMS') }
-    local params = { header = SetVal, ptype = 'button', size = 30 }
-    userMods.SendEvent('AOPANEL_SEND_ADDON', {
-        name = addonName, sysName = addonName, param = params
-    })
-
-    common.RegisterEventHandler(OnAoPanelClickButton, 'AOPANEL_BUTTON_LEFT_CLICK')
-    common.RegisterEventHandler(OnAoPanelRightClickButton, 'AOPANEL_BUTTON_RIGHT_CLICK')
-
-    OpenConfigButton:Show(false)
-end
-
-function OnAoPanelClickButton(params)
+local function OnAoPanelClickButton(params)
     if params.sender ~= nil and params.sender ~= addonName then
         return
     end
@@ -181,22 +150,7 @@ function OnAoPanelClickButton(params)
     OnClickButton()
 end
 
-function OnAoPanelRightClickButton(params)
-    if params.sender ~= nil and params.sender ~= addonName then
-        return
-    end
-
-    OnRightClickButton()
-end
-
-function OnClickButton()
-    if DnD:IsDragging() then
-        return
-    end
-
-end
-
-function OnRightClickButton()
+local function OnRightClickButton()
     if DnD:IsDragging() then
         return
     end
@@ -214,25 +168,66 @@ function OnRightClickButton()
     dndOn = not dndOn
 end
 
-function OnEventAvatarCreated()
+local function OnAoPanelRightClickButton(params)
+    if params.sender ~= nil and params.sender ~= addonName then
+        return
+    end
+
+    OnRightClickButton()
+end
+
+local function OnAoPanelStart()
+    local SetVal = { val = userMods.ToWString('EMS') }
+    local params = { header = SetVal, ptype = 'button', size = 30 }
+    userMods.SendEvent('AOPANEL_SEND_ADDON', {
+        name = addonName, sysName = addonName, param = params
+    })
+
+    common.RegisterEventHandler(OnAoPanelClickButton, 'AOPANEL_BUTTON_LEFT_CLICK')
+    common.RegisterEventHandler(OnAoPanelRightClickButton, 'AOPANEL_BUTTON_RIGHT_CLICK')
+
+    OpenConfigButton:Show(false)
+end
+
+local function CreatePanel()
+    Panel = mainForm:GetChildUnchecked('ItemsPanel', false)
+    Panel:SetBackgroundColor({ a = 0.0 })
+
+    local Item = Panel:GetChildUnchecked('PanelItem', false)
+    ItemDesc = Item:GetWidgetDesc()
+    Item:DestroyWidget()
+
+    DnD.Init(Panel, nil, true)
+    DnD.Remove(Panel)
+
+    local loaded = LoadModulesToPanel()
+    local CommonPanelPlacement = Panel:GetPlacementPlain();
+    CommonPanelPlacement.sizeY = config['ICON_SIZE']
+    CommonPanelPlacement.sizeX = config['ICON_SIZE'] * loaded + 20
+    Panel:SetPlacementPlain(CommonPanelPlacement)
+
+    common.RegisterReactionHandler(OnItemClick, 'EVENT_ON_ITEM_CLICK')
+end
+
+local function CreateConfigButton()
+    OpenConfigButton = mainForm:GetChildUnchecked('OpenConfigButton', false)
+    DnD.Init(OpenConfigButton, nil, true)
+
+    common.RegisterReactionHandler(OnRightClickButton, 'EVENT_ON_CONFIG_BUTTON_RIGHT_CLICK')
+    common.RegisterEventHandler(OnAoPanelStart, 'AOPANEL_START')
+end
+
+local function Run()
+    avatarId = avatar.GetId()
+
     mainForm:Show(false)
 
     CreatePanel()
     CreateConfigButton()
 
+    common.RegisterEventHandler(UpdateModuleAfterCombatIsFinished, 'EVENT_OBJECT_COMBAT_STATUS_CHANGED', {objectId = avatarId})
+
     mainForm:Show(true)
 end
 
-function StripTags(s)
-    return common.IsWString(s) and common.CreateValuedText { format = s }:ToWString() or s
-end
-
-function Init()
-    if avatar and avatar.IsExist() then
-        OnEventAvatarCreated()
-    else
-        common.RegisterEventHandler(OnEventAvatarCreated, "EVENT_AVATAR_CREATED")
-    end
-end
-
-Init()
+Run()

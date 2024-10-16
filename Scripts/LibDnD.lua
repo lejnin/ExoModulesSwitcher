@@ -1,7 +1,7 @@
 --------------------------------------------------------------------------------
 -- LibDnD.lua // "Drag&Drop Library" by SLA, version 2011-05-28
---                                   updated version 2014-10-29 by hal.dll
--- Help, support and updates: 
+--                                   updated version 2024-09-24 by oldodin
+-- Help, support and updates:
 -- https://alloder.pro/topic/260-how-to-libdndlua-biblioteka-dragdrop/
 --------------------------------------------------------------------------------
 Global( "DnD", {} )
@@ -10,55 +10,62 @@ Global( "DnD", {} )
 function DnD.Init( wtMovable, wtReacting, fUseCfg, fLockedToParentArea, Padding, KbFlag, Cursor, oldParam1, oldParam2 )
 	if wtMovable == DnD then
 		wtMovable, wtReacting, fUseCfg, fLockedToParentArea, Padding, KbFlag, Cursor, oldParam1 =
-		           wtReacting, fUseCfg, fLockedToParentArea, Padding, KbFlag, Cursor, oldParam1, oldParam2
+		wtReacting, fUseCfg, fLockedToParentArea, Padding, KbFlag, Cursor, oldParam1, oldParam2
 	end
 	if type(wtMovable) == "number" then
 		wtReacting, wtMovable, fUseCfg, fLockedToParentArea, Padding, KbFlag, Cursor, oldParam1 =
-		           wtReacting, fUseCfg, fLockedToParentArea, Padding, KbFlag, Cursor, oldParam1, oldParam2
+		wtReacting, fUseCfg, fLockedToParentArea, Padding, KbFlag, Cursor, oldParam1, oldParam2
 	end
 	if type(wtMovable) ~= "userdata" then return end
 	if not DnD.Widgets then
 		DnD.Widgets = {}
-		DnD.Screen = widgetsSystem:GetPosConverterParams()
+		DnD.Screen = common.GetPosConverterParams()
 		common.RegisterEventHandler( DnD.OnPickAttempt, "EVENT_DND_PICK_ATTEMPT" )
 		common.RegisterEventHandler( DnD.OnResolutionChanged, "EVENT_POS_CONVERTER_CHANGED" )
 	end
 	wtReacting = wtReacting or wtMovable
 	local ID = DnD.AllocateDnDID(wtReacting)
-	DnD.Widgets[ ID ] = {}
-	DnD.Widgets[ ID ].wtReacting = wtReacting
-	DnD.Widgets[ ID ].wtMovable = wtMovable
-	DnD.Widgets[ ID ].Enabled = true
-	DnD.Widgets[ ID ].fUseCfg = fUseCfg or false
-	DnD.Widgets[ ID ].CfgName = fUseCfg and "DnD:" .. DnD.GetWidgetTreePath( DnD.Widgets[ ID ].wtMovable )
-	DnD.Widgets[ ID ].fLockedToParentArea = fLockedToParentArea == nil and true or fLockedToParentArea
-	DnD.Widgets[ ID ].KbFlag = type(KbFlag) == "number" and KbFlag or false
-	DnD.Widgets[ ID ].Cursor = Cursor == false and "default" or type(Cursor) == "string" and Cursor or "drag"
-	DnD.Widgets[ ID ].Padding = { 0, 0, 0, 0 } -- { T, R, B, L }
+	local newDndInfo = {}
+	DnD.Widgets[ ID ] = newDndInfo
+
+	newDndInfo.wtReacting = wtReacting
+	newDndInfo.wtMovable = wtMovable
+	newDndInfo.Enabled = true
+	newDndInfo.fUseCfg = fUseCfg or false
+	newDndInfo.CfgName = fUseCfg and "DnD:" .. DnD.GetWidgetTreePath( newDndInfo.wtMovable )
+	newDndInfo.fLockedToParentArea = fLockedToParentArea == nil and true or fLockedToParentArea
+	newDndInfo.KbFlag = type(KbFlag) == "number" and KbFlag or false
+	newDndInfo.Cursor = Cursor == false and "default" or type(Cursor) == "string" and Cursor or "drag"
+	newDndInfo.Padding = { 0, 0, 0, 0 } -- { T, R, B, L }
 	if type( Padding ) == "table" then
 		for i = 1, 4 do
 			if Padding[ i ] then
-				DnD.Widgets[ ID ].Padding[ i ] = Padding[ i ]
+				newDndInfo.Padding[ i ] = Padding[ i ]
 			end
 		end
 	elseif type( Padding ) == "number" then
 		for i = 1, 4 do
-			DnD.Widgets[ ID ].Padding[ i ] = Padding
+			newDndInfo.Padding[ i ] = Padding
 		end
 	end
-	local InitialPlace = DnD.Widgets[ ID ].wtMovable:GetPlacementPlain()
+	local InitialPlace = newDndInfo.wtMovable:GetPlacementPlain()
 	if fUseCfg then
-		local Cfg = GetConfig( DnD.Widgets[ ID ].CfgName )
+		local Cfg = GetConfig( newDndInfo.CfgName )
 		if Cfg then
 			local LimitMin, LimitMax = DnD.PrepareLimits( ID, InitialPlace )
 			InitialPlace.posX = Cfg.posX or InitialPlace.posX
 			InitialPlace.posY = Cfg.posY or InitialPlace.posY
 			InitialPlace.highPosX = Cfg.highPosX or InitialPlace.highPosX
 			InitialPlace.highPosY = Cfg.highPosY or InitialPlace.highPosY
-			DnD.Widgets[ ID ].wtMovable:SetPlacementPlain( DnD.NormalizePlacement( InitialPlace, LimitMin, LimitMax ) )
+			if newDndInfo.fLockedToParentArea then
+				newDndInfo.wtMovable:SetPlacementPlain( DnD.NormalizePlacement( InitialPlace, LimitMin, LimitMax ) )
+			else
+				newDndInfo.wtMovable:SetPlacementPlain( InitialPlace )
+			end
 		end
 	end
-	DnD.Widgets[ ID ].Initial = { X = InitialPlace.posX, Y = InitialPlace.posY, HX = InitialPlace.highPosX, HY = InitialPlace.highPosY }
+	newDndInfo.Initial = { X = InitialPlace.posX, Y = InitialPlace.posY, HX = InitialPlace.highPosX, HY = InitialPlace.highPosY }
+
 	DnD.Register( wtReacting, true )
 end
 function DnD.Remove( wtWidget, oldParam1 )
@@ -66,7 +73,7 @@ function DnD.Remove( wtWidget, oldParam1 )
 	if wtWidget == DnD then wtWidget = oldParam1 end
 	local ID = DnD.GetWidgetID( wtWidget )
 	if ID then
-		DnD.Enable( wtWidget, false )
+		DnD.Register( wtWidget, false )
 		DnD.Widgets[ ID ] = nil
 	end
 end
@@ -74,9 +81,30 @@ function DnD.Enable( wtWidget, fEnable, oldParam1 )
 	if not DnD.Widgets then return end
 	if wtWidget == DnD then wtWidget, fEnable = fEnable, oldParam1 end
 	local ID = DnD.GetWidgetID( wtWidget )
-	if ID and DnD.Widgets[ ID ].Enabled ~= fEnable then
-		DnD.Widgets[ ID ].Enabled = fEnable
-		DnD.Register( wtWidget, fEnable )
+	if ID then
+		local dndInfo = DnD.Widgets[ ID ]
+		if dndInfo.Enabled ~= fEnable then
+			dndInfo.Enabled = fEnable
+			dndInfo.wtReacting:DNDEnable(fEnable)
+		end
+	end
+end
+function DnD.UpdatePadding( wtWidget, Padding )
+	if not DnD.Widgets then return end
+	local ID = DnD.GetWidgetID( wtWidget )
+	if ID then
+		local dndInfo = DnD.Widgets[ ID ]
+		if type( Padding ) == "table" then
+			for i = 1, 4 do
+				if Padding[ i ] then
+					dndInfo.Padding[ i ] = Padding[ i ]
+				end
+			end
+		elseif type( Padding ) == "number" then
+			for i = 1, 4 do
+				dndInfo.Padding[ i ] = Padding
+			end
+		end
 	end
 end
 function DnD.IsDragging()
@@ -99,13 +127,12 @@ function SetConfig( name, value )
 end
 -- INTERNAL FUNCTIONS --
 function DnD.AllocateDnDID( wtWidget )
-	local BaseID = 300200
-	return BaseID + common.RequestIntegerByInstanceId(wtWidget:GetInstanceId())
+	return wtWidget:GetId() * DND_CONTAINER_STEP + DND_GENERIC_WIDGET_USER
 end
 function DnD.GetWidgetID( wtWidget )
-	local WtId = wtWidget:GetInstanceId()
 	for ID, W in pairs( DnD.Widgets ) do
-		if W.wtReacting:GetInstanceId() == WtId or W.wtMovable:GetInstanceId() == WtId then
+		--в текущих версиях оператор == для виджетов сверяет типы и затем как IsEqual
+		if W.wtReacting == wtWidget or W.wtMovable == wtWidget then
 			return ID
 		end
 	end
@@ -122,14 +149,24 @@ function DnD.Register( wtWidget, fRegister )
 	if not DnD.Widgets then return end
 	local ID = DnD.GetWidgetID( wtWidget )
 	if ID then
-		if fRegister and DnD.Widgets[ ID ].Enabled then
-			mission.DNDRegister( DnD.Widgets[ ID ].wtReacting, ID, true )
+		local dndInfo = DnD.Widgets[ ID ]
+		local currentDNDState = dndInfo.wtReacting:DNDGetState()
+		local currentReactingWdg = dndInfo.wtReacting
+
+		if fRegister and dndInfo.Enabled then
+			if currentDNDState == DND_STATE_NOT_REGISTERED then
+				currentReactingWdg:DNDRegister(ID, true)
+			end
 		elseif not fRegister then
 			if DnD.Dragging == ID then
-				mission.DNDCancelDrag()
+				if currentDNDState ~= DND_STATE_NOT_REGISTERED then
+					currentReactingWdg:DNDCancelDrag()
+				end
 				DnD.OnDragCancelled()
 			end
-			mission.DNDUnregister( DnD.Widgets[ ID ].wtReacting )
+			if currentDNDState ~= DND_STATE_NOT_REGISTERED then
+				currentReactingWdg:DNDUnregister()
+			end
 		end
 	end
 end
@@ -166,11 +203,12 @@ function DnD.NormalizePlacement( Place, LimitMin, LimitMax )
 	return Place
 end
 function DnD.PrepareLimits( ID, Place )
+	local dndInfo = DnD.Widgets[ ID ]
 	local LimitMin = {}
 	local LimitMax = {}
-	local ParentSize, ParentRect = DnD.GetParentRealSize( DnD.Widgets[ ID ].wtMovable )
-	local Padding = DnD.Widgets[ ID ].Padding
-	Place = Place or DnD.Widgets[ ID ].wtMovable:GetPlacementPlain()
+	local ParentSize, ParentRect = DnD.GetParentRealSize( dndInfo.wtMovable )
+	local Padding = dndInfo.Padding
+	Place = Place or dndInfo.wtMovable:GetPlacementPlain()
 	if Place.alignX == WIDGET_ALIGN_LOW then
 		LimitMin.posX = Padding[ 4 ]
 		LimitMax.posX = ParentSize.sizeX - Place.sizeX - Padding[ 2 ]
@@ -208,32 +246,32 @@ end
 -----------------------------------------------------------------------------------------------------------
 function DnD.OnPickAttempt( params )
 	local Picking = params.srcId
-	
-	if DnD.Widgets[ Picking ] and DnD.Widgets[ Picking ].Enabled 
-	and ( 
-	not DnD.Widgets[ Picking ].KbFlag 
-	or DnD.Widgets[ Picking ].KbFlag == KBF_NONE 
-	and params.kbFlags == KBF_NONE 
-	or (common.GetBitAnd and common.GetBitAnd( params.kbFlags, DnD.Widgets[ Picking ].KbFlag ) ~= 0  or bit.band( params.kbFlags, DnD.Widgets[ Picking ].KbFlag ) ~= 0)
+	local dndInfo = DnD.Widgets[ Picking ]
+	if dndInfo and dndInfo.Enabled
+			and (
+			not dndInfo.KbFlag
+					or (dndInfo.KbFlag == KBF_NONE and params.kbFlags == KBF_NONE)
+					or bit.band( params.kbFlags, dndInfo.KbFlag ) ~= 0
 	) then
-		DnD.Place = DnD.Widgets[ Picking ].wtMovable:GetPlacementPlain()
-		DnD.Reset = DnD.Widgets[ Picking ].wtMovable:GetPlacementPlain()
+		DnD.Place = dndInfo.wtMovable:GetPlacementPlain()
+		DnD.Reset = dndInfo.wtMovable:GetPlacementPlain()
 		DnD.Cursor = { X = params.posX , Y = params.posY }
-		DnD.Screen = widgetsSystem:GetPosConverterParams()
-		if DnD.Widgets[ Picking ].fLockedToParentArea then
+		DnD.Screen = common.GetPosConverterParams()
+		if dndInfo.fLockedToParentArea then
 			DnD.LimitMin, DnD.LimitMax = DnD.PrepareLimits( Picking, DnD.Place )
 		end
-		common.SetCursor( DnD.Widgets[ Picking ].Cursor )
+		common.SetCursor( dndInfo.Cursor )
 		DnD.Dragging = Picking
 		common.RegisterEventHandler( DnD.OnDragTo, "EVENT_DND_DRAG_TO" )
 		common.RegisterEventHandler( DnD.OnDropAttempt, "EVENT_DND_DROP_ATTEMPT" )
 		common.RegisterEventHandler( DnD.OnDragCancelled, "EVENT_DND_DRAG_CANCELLED" )
-		-- AO 2.0.06+ All IDs other than 14xxx and 15xxx need confirmation
-		mission.DNDConfirmPickAttempt()
+
+		dndInfo.wtReacting:DNDConfirmPickAttempt()
 	end
 end
 function DnD.OnDragTo( params )
 	if not DnD.Dragging then return end
+	local dndInfo = DnD.Widgets[ DnD.Dragging ]
 	local dx = params.posX - DnD.Cursor.X
 	local dy = params.posY - DnD.Cursor.Y
 	if DnD.Place.alignX ~= WIDGET_ALIGN_LOW_ABS then
@@ -246,11 +284,11 @@ function DnD.OnDragTo( params )
 	DnD.Place.posY = math.floor( DnD.Reset.posY + dy )
 	DnD.Place.highPosX = math.floor( DnD.Reset.highPosX - dx )
 	DnD.Place.highPosY = math.floor( DnD.Reset.highPosY - dy )
-	if DnD.Widgets[ DnD.Dragging ].fLockedToParentArea then
+	if dndInfo.fLockedToParentArea then
 		DnD.Place = DnD.NormalizePlacement( DnD.Place, DnD.LimitMin, DnD.LimitMax )
 	end
-	DnD.Widgets[ DnD.Dragging ].wtMovable:SetPlacementPlain( DnD.Place )
-	common.SetCursor( DnD.Widgets[ DnD.Dragging ].Cursor )
+	dndInfo.wtMovable:SetPlacementPlain( DnD.Place )
+	common.SetCursor( dndInfo.Cursor )
 end
 function DnD.OnDropAttempt()
 	DnD.StopDragging( true )
@@ -263,14 +301,15 @@ function DnD.StopDragging( fSuccess )
 	common.UnRegisterEventHandler( DnD.OnDragTo, "EVENT_DND_DRAG_TO" )
 	common.UnRegisterEventHandler( DnD.OnDropAttempt, "EVENT_DND_DROP_ATTEMPT" )
 	common.UnRegisterEventHandler( DnD.OnDragCancelled, "EVENT_DND_DRAG_CANCELLED" )
+	local dndInfo = DnD.Widgets[ DnD.Dragging ]
 	if fSuccess then
-		mission.DNDConfirmDropAttempt()
-		if DnD.Widgets[ DnD.Dragging ].fUseCfg then
-			SetConfig( DnD.Widgets[ DnD.Dragging ].CfgName, { posX = DnD.Place.posX, posY = DnD.Place.posY, highPosX = DnD.Place.highPosX, highPosY = DnD.Place.highPosY } )
+		dndInfo.wtReacting:DNDConfirmDropAttempt()
+		if dndInfo.fUseCfg then
+			SetConfig( dndInfo.CfgName, { posX = DnD.Place.posX, posY = DnD.Place.posY, highPosX = DnD.Place.highPosX, highPosY = DnD.Place.highPosY } )
 		end
-		DnD.Widgets[ DnD.Dragging ].Initial = { X = DnD.Place.posX, Y = DnD.Place.posY, HX = DnD.Place.highPosX, HY = DnD.Place.highPosY }
+		dndInfo.Initial = { X = DnD.Place.posX, Y = DnD.Place.posY, HX = DnD.Place.highPosX, HY = DnD.Place.highPosY }
 	else
-		DnD.Widgets[ DnD.Dragging ].wtMovable:SetPlacementPlain( DnD.Reset )
+		dndInfo.wtMovable:SetPlacementPlain( DnD.Reset )
 	end
 	DnD.Place = nil
 	DnD.Reset = nil
@@ -281,9 +320,11 @@ function DnD.StopDragging( fSuccess )
 	common.SetCursor( "default" )
 end
 function DnD.OnResolutionChanged()
-	mission.DNDCancelDrag()
+	if DnD.Dragging and DnD.Widgets[ DnD.Dragging ] then
+		DnD.Widgets[ DnD.Dragging ].wtReacting:DNDCancelDrag()
+	end
 	DnD.OnDragCancelled()
-	DnD.Screen = widgetsSystem:GetPosConverterParams()
+	DnD.Screen = common.GetPosConverterParams()
 	for ID, W in pairs( DnD.Widgets ) do
 		if W.fLockedToParentArea then
 			local InitialPlace = W.wtMovable:GetPlacementPlain()
@@ -295,4 +336,19 @@ function DnD.OnResolutionChanged()
 			W.wtMovable:SetPlacementPlain( DnD.NormalizePlacement( InitialPlace, LimitMin, LimitMax ) )
 		end
 	end
+end
+
+-- для совместимости, начиная с 15.3 движок сохраняет DND при сменах видимости
+DnD.SwapWdg = function(aWdg)
+	if aWdg:IsVisible() then
+		DnD.HideWdg(aWdg)
+	else
+		DnD.ShowWdg(aWdg)
+	end
+end
+DnD.ShowWdg = function(aWdg)
+	aWdg:Show(true)
+end
+DnD.HideWdg = function(aWdg)
+	aWdg:Show(false)
 end
